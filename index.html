@@ -201,6 +201,36 @@ function toggleOption(letter,isMultiple){
   else{selected.clear();selected.add(letter)}
   render();
 }
+let feedbackAudioContext;
+function playTone(frequency,start,duration){
+  const ctx=feedbackAudioContext;
+  const oscillator=ctx.createOscillator();
+  const gain=ctx.createGain();
+  oscillator.type='sine';
+  oscillator.frequency.setValueAtTime(frequency,start);
+  gain.gain.setValueAtTime(0.0001,start);
+  gain.gain.exponentialRampToValueAtTime(0.18,start+0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start(start);
+  oscillator.stop(start+duration+0.03);
+}
+function playFeedbackSound(isCorrect){
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass)return;
+  if(!feedbackAudioContext)feedbackAudioContext=new AudioContextClass();
+  const ctx=feedbackAudioContext;
+  if(ctx.state==='suspended')ctx.resume();
+  const now=ctx.currentTime;
+  if(isCorrect){
+    playTone(660,now,0.09);
+    playTone(880,now+0.1,0.12);
+  }else{
+    playTone(220,now,0.12);
+    playTone(165,now+0.13,0.16);
+  }
+}
 function doSubmit(){
   if(selected.size===0)return;
   submitted=true;
@@ -208,6 +238,7 @@ function doSubmit(){
   const q=displayQuestions[currentIndex];
   const answers=q.type==='judge'?[q.answer]:q.answer.split('');
   const isCorrect=selected.size===answers.length&&[...selected].every(x=>answers.includes(x));
+  playFeedbackSound(isCorrect);
   answeredCount++;
   if(isCorrect){
     correctCount++;
